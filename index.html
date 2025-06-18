@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оплата заказа</title>
+    <!-- Подключаем скрипт для интеграции с Telegram -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        #payment-form {
+            /* Сюда Т-Банк встроит свою форму */
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Подготовка к оплате</h1>
+        <p id="description">Загрузка данных...</p>
+        <p>Сумма: <b id="amount">...</b> ₽</p>
+        <div class="loader" id="loader"></div>
+        <!-- Сюда будет встроена форма оплаты -->
+        <div id="payment-form"></div>
+    </div>
+
+    <!-- Подключаем скрипт для эквайринга Т-Банка -->
+    <script src="https://securepay.tinkoff.ru/html/payform/js/tinkoff_v2.js"></script>
+
+    <script>
+        // Инициализируем Telegram Web App
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Разворачиваем приложение на весь экран
+
+        // Получаем параметры из URL (которые передал бот)
+        const urlParams = new URLSearchParams(window.location.search);
+        const amount = urlParams.get('amount');
+        const orderId = urlParams.get('order_id');
+        const description = urlParams.get('description');
+
+        // Обновляем текст на странице
+        document.getElementById('amount').innerText = amount;
+        document.getElementById('description').innerText = description;
+
+        // --- ВАЖНО: ЗАПОЛНИТЕ ВАШИ ДАННЫЕ ЗДЕСЬ ---
+        const terminalKey = "ВАШ_КЛЮЧ_ТЕРМИНАЛА"; // <-- Вставьте сюда ключ вашего терминала
+        const password = "ВАШ_СЕКРЕТНЫЙ_КЛЮЧ"; // <-- Вставьте сюда ваш секретный ключ (пароль)
+        // -----------------------------------------
+
+        // Функция для генерации подписи (токена)
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Подготавливаем и запускаем форму оплаты
+        async function initPayment() {
+            if (!amount || !orderId || !description) {
+                document.getElementById('description').innerText = "Ошибка: не найдены параметры заказа.";
+                document.getElementById('loader').style.display = 'none';
+                return;
+            }
+
+            const payload = {
+                TerminalKey: terminalKey,
+                Amount: parseInt(amount) * 100, // Сумма в копейках
+                OrderId: orderId,
+                Description: description,
+                Password: password
+            };
+
+            const sortedKeys = Object.keys(payload).sort();
+            const concatValues = sortedKeys.map(key => payload[key]).join('');
+            
+            const token = await sha256(concatValues);
+
+            // Инициализируем виджет оплаты
+            const tinkoff = new TinkoffPay({
+                terminalKey: terminalKey,
+                amount: parseInt(amount) * 100,
+                orderId: orderId,
+                description: description,
+                token: token,
+                frame: true, // Встраиваем как iframe
+                language: 'ru',
+                onSuccess: (res) => {
+                    console.log('Payment Success:', res);
+                    // Отправляем сообщение боту об успехе
+                    const dataToSend = JSON.stringify({
+                        status: 'success',
+                        order_id: res.OrderId,
+                        payment_id: res.PaymentId
+                    });
+                    tg.sendData(dataToSend);
+                    // tg.close() можно вызвать после отправки, если нужно
+                },
+                onFail: (res) => {
+                    console.log('Payment Fail:', res);
+                    document.getElementById('description').innerText = `Ошибка оплаты: ${res.Details}`;
+                    document.getElementById('loader').style.display = 'none';
+                }
+            });
+
+            // Встраиваем форму в наш div
+            document.getElementById('loader').style.display = 'none';
+            tinkoff.embedPayForm('payment-form');
+        }
+
+        // Запускаем процесс
+        initPayment();
+    </script>
+
+</body>
+</html>
