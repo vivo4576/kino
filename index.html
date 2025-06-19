@@ -1,100 +1,220 @@
-    <!-- ... всё, что было до этого, остается без изменений ... -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Кинотеатр</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Стили для красоты, можно будет улучшить */
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 15px; background-color: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); }
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .film-card, .time-slot, .seat-type { border: 1px solid var(--tg-theme-button-color); border-radius: 8px; padding: 10px; margin-bottom: 10px; cursor: pointer; }
+        h1, h2, h3 { color: var(--tg-theme-text-color); }
+        button { width: 100%; padding: 15px; font-size: 16px; border: none; border-radius: 8px; background-color: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); cursor: pointer; }
+        input { width: calc(100% - 22px); padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ccc; }
+        #payment-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; }
+        #payment-form { width: 90%; height: 90%; background: white; border-radius: 12px; }
+    </style>
+</head>
+<body>
+
+    <!-- Экран 1: Выбор даты -->
+    <div id="date-screen" class="screen active">
+        <h2>📅 Выберите дату</h2>
+        <div id="dates-container">Загрузка дат...</div>
+    </div>
+
+    <!-- Экран 2: Выбор фильма -->
+    <div id="film-screen" class="screen">
+        <h2 id="film-screen-title">🎬 Выберите фильм</h2>
+        <div id="films-container"></div>
+    </div>
+
+    <!-- Экран 3: Выбор типа и количества мест -->
+    <div id="seat-screen" class="screen">
+        <h2>🛋️ Выберите места</h2>
+        <div id="seats-container"></div>
+        <h3>Количество:</h3>
+        <input type="number" id="quantity-input" min="1" value="1">
+    </div>
+
+    <!-- Экран 4: Ввод данных -->
+    <div id="user-data-screen" class="screen">
+        <h2>👤 Ваши данные</h2>
+        <input type="text" id="name-input" placeholder="Ваше имя">
+        <input type="tel" id="phone-input" placeholder="Ваш телефон">
+    </div>
+
+    <!-- Контейнер для формы оплаты Т-Банка -->
+    <div id="payment-container">
+        <div id="payment-form"></div>
+    </div>
+    
     <script src="https://securepay.tinkoff.ru/html/payform/js/tinkoff_v2.js"></script>
 
     <script>
-        // --- Секция отладки ---
-        const debugDiv = document.createElement('div');
-        debugDiv.style.marginTop = '20px';
-        debugDiv.style.padding = '10px';
-        debugDiv.style.border = '1px solid #ccc';
-        debugDiv.style.textAlign = 'left';
-        debugDiv.style.fontFamily = 'monospace';
-        debugDiv.style.fontSize = '12px';
-        debugDiv.style.wordBreak = 'break-all';
-        document.querySelector('.container').appendChild(debugDiv);
-
-        function log(message) {
-            console.log(message);
-            debugDiv.innerHTML += message + '<br>';
-        }
-        // -----------------------
+        // --- НАСТРОЙКИ ---
+        const SUPABASE_URL = 'https://prvyadrhyvwkxyogtiha.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBydnlhZHJoeXZ3a3h5b2d0aWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAzNjA4NjQsImV4cCI6MjA2NTkzNjg2NH0.MDqe2lJOBDfZrisqvTxa7p9MAjOcVSDJaJlk_8l8TUA';
+        const TINKOFF_TERMINAL_KEY = '1748600682178DEMO';
+        // -----------------
 
         const tg = window.Telegram.WebApp;
         tg.expand();
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const amount = urlParams.get('amount');
-        const orderId = urlParams.get('order_id');
-        const description = urlParams.get('description');
-
-        document.getElementById('amount').innerText = amount || '???';
-        document.getElementById('description').innerText = description || 'Нет описания';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
-        log('WebApp загружен.');
-        log(`Параметры: amount=${amount}, orderId=${orderId}`);
+        const booking = {}; // Объект для хранения данных о брони
 
-        // --- ВАЖНО: УБЕДИТЕСЬ, ЧТО ЗДЕСЬ ВАШИ ТЕСТОВЫЕ КЛЮЧИ ---
-        const terminalKey = "1748600682178DEMO";
-        const password = "^wp&BNO0EXwwrs^S";
-        // ----------------------------------------------------
-
-        log(`Терминал: ${terminalKey.substring(0, 5)}...`);
-
-        async function sha256(message) {
-            const msgBuffer = new TextEncoder().encode(message);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        // --- Навигация между экранами ---
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            tg.MainButton.hide();
         }
 
-        async function initPayment() {
-            if (!amount || !orderId) {
-                log('Ошибка: Недостаточно параметров для начала оплаты.');
-                document.getElementById('description').innerText = "Ошибка: не найдены параметры заказа.";
-                document.getElementById('loader').style.display = 'none';
+        // --- Загрузка данных ---
+        async function loadDates() {
+            const { data, error } = await supabase
+                .from('schedule')
+                .select('date')
+                .gte('date', new Date().toISOString().split('T')[0]) // Получаем только будущие даты
+                .order('date', { ascending: true });
+
+            if (error) {
+                console.error(error);
                 return;
             }
 
-            const payload = {
-                TerminalKey: terminalKey,
-                Amount: parseInt(amount) * 100,
-                OrderId: orderId,
-                Description: description,
-                Password: password
+            const uniqueDates = [...new Set(data.map(item => item.date))];
+            const container = document.getElementById('dates-container');
+            container.innerHTML = '';
+            uniqueDates.forEach(date => {
+                const el = document.createElement('div');
+                el.className = 'time-slot';
+                el.innerText = new Date(date).toLocaleDateString('ru-RU');
+                el.onclick = () => {
+                    booking.date = date;
+                    loadFilms(date);
+                };
+                container.appendChild(el);
+            });
+        }
+        
+        async function loadFilms(date) {
+            const { data, error } = await supabase.from('schedule').select('*').eq('date', date);
+            if (error) { console.error(error); return; }
+
+            const container = document.getElementById('films-container');
+            container.innerHTML = '';
+            data.forEach(film => {
+                const el = document.createElement('div');
+                el.className = 'film-card';
+                el.innerHTML = `<h3>${film.film_name}</h3><p>${film.film_time}</p>`;
+                el.onclick = () => {
+                    booking.film_name = film.film_name;
+                    booking.film_time = film.film_time;
+                    loadSeats(film);
+                };
+                container.appendChild(el);
+            });
+            document.getElementById('film-screen-title').innerText = `🎬 Выберите фильм на ${new Date(date).toLocaleDateString('ru-RU')}`;
+            showScreen('film-screen');
+        }
+
+        async function loadSeats(film) {
+            // В этой упрощенной версии мы не проверяем оставшиеся места, но это можно добавить
+            const container = document.getElementById('seats-container');
+            container.innerHTML = '';
+            
+            const stdSeatsEl = document.createElement('div');
+            stdSeatsEl.className = 'seat-type';
+            stdSeatsEl.innerText = `Обычный пуф (${film.std_total} мест)`;
+            stdSeatsEl.onclick = () => {
+                booking.seat_type = 'обычный';
+                showUserDataScreen();
             };
 
-            const sortedKeys = Object.keys(payload).sort();
-            const concatValues = sortedKeys.map(key => payload[key]).join('');
-            log('Строка для токена (без пароля): ' + concatValues.replace(password, '***'));
+            const bigSeatsEl = document.createElement('div');
+            bigSeatsEl.className = 'seat-type';
+            bigSeatsEl.innerText = `Большой пуф (${film.big_total} мест)`;
+            bigSeatsEl.onclick = () => {
+                booking.seat_type = 'большой';
+                showUserDataScreen();
+            };
             
-            const token = await sha256(concatValues);
-            log(`Сгенерирован токен: ${token.substring(0, 10)}...`);
+            container.appendChild(stdSeatsEl);
+            container.appendChild(bigSeatsEl);
+            showScreen('seat-screen');
+        }
+
+        function showUserDataScreen() {
+            showScreen('user-data-screen');
+            tg.MainButton.setText('Подтвердить и оплатить');
+            tg.MainButton.show();
+        }
+        
+        tg.MainButton.onClick(async () => {
+            booking.quantity = document.getElementById('quantity-input').value;
+            booking.name = document.getElementById('name-input').value;
+            booking.phone = document.getElementById('phone-input').value;
+            booking.booking_code = String(Math.floor(10000 + Math.random() * 90000));
+            booking.status = 'pending';
+
+            if (!booking.name) {
+                tg.showAlert('Пожалуйста, введите ваше имя.');
+                return;
+            }
+
+            // Сохраняем бронь в Supabase
+            const { error } = await supabase.from('bookings').insert([booking]);
+            if (error) {
+                tg.showAlert('Не удалось создать бронь. Ошибка: ' + error.message);
+                return;
+            }
+
+            // Инициализируем оплату
+            initTinkoffPayment();
+        });
+
+        function initTinkoffPayment() {
+            const price = booking.seat_type === 'обычный' ? 500 : 600;
+            const amount = price * booking.quantity;
+            
+            document.getElementById('payment-container').style.display = 'flex';
 
             const tinkoff = new TinkoffPay({
-                terminalKey: terminalKey,
-                amount: parseInt(amount) * 100,
-                orderId: orderId,
-                description: description,
-                token: token,
+                terminalKey: TINKOFF_TERMINAL_KEY,
+                amount: amount * 100, // в копейках
+                orderId: booking.booking_code,
+                description: `Бронь №${booking.booking_code}: ${booking.film_name}`,
                 frame: true,
                 language: 'ru',
-                onSuccess: (res) => {
-                    log('SUCCESS!');
-                    const dataToSend = JSON.stringify({ status: 'success', order_id: res.OrderId, payment_id: res.PaymentId });
+                onSuccess: async (res) => {
+                    await supabase.from('bookings').update({ status: 'active' }).eq('booking_code', res.OrderId);
+                    
+                    const dataToSend = JSON.stringify({
+                        status: 'success',
+                        order_id: res.OrderId,
+                        amount: amount,
+                        description: `Бронь №${res.OrderId}: ${booking.film_name}`
+                    });
                     tg.sendData(dataToSend);
                 },
                 onFail: (res) => {
-                    log(`FAIL: ${JSON.stringify(res)}`);
-                    document.getElementById('description').innerText = `Ошибка оплаты: ${res.Details}`;
-                    document.getElementById('loader').style.display = 'none';
+                    tg.showAlert(`Ошибка оплаты: ${res.Details || 'Попробуйте снова.'}`);
+                    document.getElementById('payment-container').style.display = 'none';
                 }
             });
-
-            log('Объект TinkoffPay создан. Вызываю embedPayForm...');
-            document.getElementById('loader').style.display = 'none';
+            
             tinkoff.embedPayForm('payment-form');
-            log('embedPayForm вызван.');
         }
 
-        initPayment();
+        // --- Инициализация при загрузке ---
+        showScreen('date-screen');
+        loadDates();
     </script>
+</body>
+</html>
