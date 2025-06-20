@@ -6,97 +6,25 @@
     <title>Кинотеатр</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- ПРАВИЛЬНЫЙ Скрипт Т-Банка -->
+    <script src="https://securepay.tinkoff.ru/html/payform/js/payform-widget.js"></script>
     <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            margin: 0; 
-            padding: 15px; 
-            background-color: var(--tg-theme-bg-color, #ffffff); 
-            color: var(--tg-theme-text-color, #000000); 
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 15px; background-color: var(--tg-theme-bg-color, #ffffff); color: var(--tg-theme-text-color, #000000); }
         .screen { display: none; }
         .screen.active { display: block; }
-        .list-item { 
-            border: 1px solid var(--tg-theme-button-color, #2481cc); 
-            background-color: var(--tg-theme-secondary-bg-color, #f1f1f1);
-            border-radius: 8px; 
-            padding: 12px 15px; 
-            margin-bottom: 10px; 
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        .list-item:active {
-             background-color: var(--tg-theme-button-color, #2481cc);
-             color: var(--tg-theme-button-text-color, #ffffff);
-        }
-        h2 { 
-            color: var(--tg-theme-text-color, #000000); 
-            border-bottom: 1px solid var(--tg-theme-hint-color, #a8a8a8);
-            padding-bottom: 10px;
-        }
+        .list-item { border: 1px solid var(--tg-theme-button-color, #2481cc); background-color: var(--tg-theme-secondary-bg-color, #f1f1f1); border-radius: 8px; padding: 12px 15px; margin-bottom: 10px; cursor: pointer; transition: background-color 0.2s ease; }
+        .list-item:active { background-color: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #ffffff); }
+        h2 { color: var(--tg-theme-text-color, #000000); border-bottom: 1px solid var(--tg-theme-hint-color, #a8a8a8); padding-bottom: 10px; }
         p { margin-top: 5px; color: var(--tg-theme-hint-color, #a8a8a8); }
-        button { 
-            width: 100%; 
-            padding: 15px; 
-            font-size: 16px; 
-            font-weight: bold;
-            border: none; 
-            border-radius: 8px; 
-            background-color: var(--tg-theme-button-color, #2481cc); 
-            color: var(--tg-theme-button-text-color, #ffffff); 
-            cursor: pointer; 
-        }
-        input { 
-            width: calc(100% - 22px); 
-            padding: 10px; 
-            margin-bottom: 10px; 
-            border-radius: 8px; 
-            border: 1px solid #ccc;
-            background-color: var(--tg-theme-bg-color);
-            color: var(--tg-theme-text-color);
-        }
-        #payment-container { 
-            position: fixed; 
-            z-index: 1000;
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-            background: rgba(0,0,0,0.5); 
-            display: none; 
-            justify-content: center; 
-            align-items: center; 
-        }
-        #payment-form-wrapper { 
-            width: 90%; 
-            max-width: 400px;
-            height: 90%;
-            max-height: 600px;
-            background: var(--tg-theme-bg-color, #fff); 
-            border-radius: 12px;
-            overflow: hidden;
-            position: relative;
-        }
-        #close-payment-btn {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            width: 30px;
-            height: 30px;
-            border: none;
-            background: #aaa;
-            color: white;
-            border-radius: 50%;
-            font-size: 20px;
-            line-height: 30px;
-            text-align: center;
-            cursor: pointer;
-        }
+        button { width: 100%; padding: 15px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; background-color: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #ffffff); cursor: pointer; }
+        input { width: calc(100% - 22px); padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ccc; background-color: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); }
+        #payment-container { position: fixed; z-index: 1000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; }
+        #payment-form-wrapper { width: 90%; max-width: 400px; height: 90%; max-height: 600px; background: var(--tg-theme-bg-color, #fff); border-radius: 12px; overflow: hidden; position: relative; }
+        #close-payment-btn { position: absolute; top: 5px; right: 5px; width: 30px; height: 30px; border: none; background: #aaa; color: white; border-radius: 50%; font-size: 20px; line-height: 30px; text-align: center; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <!-- Экраны для Telegram -->
     <div id="telegram-ui">
         <div id="date-screen" class="screen active">
             <h2>📅 Выберите дату</h2>
@@ -119,23 +47,19 @@
         </div>
     </div>
     
-    <!-- Панель отладки -->
     <div id="debug-controls" style="border-top: 2px dashed #ccc; padding-top: 20px;">
-        <h3>Панель отладки (видна только в браузере)</h3>
+        <h3>Панель отладки</h3>
         <button id="debug-select-film-btn" style="margin-top: 10px;">1. Выбрать первый фильм</button>
-        <button id="debug-select-seat-btn" style="margin-top: 10px;">2. Выбрать обычный пуф (2 шт)</button>
-        <button id="debug-confirm-btn" style="margin-top: 10px;">3. Имитировать нажатие "Подтвердить и оплатить"</button>
+        <button id="debug-select-seat-btn" style="margin-top: 10px;">2. Выбрать пуф (2 шт)</button>
+        <button id="debug-confirm-btn" style="margin-top: 10px;">3. Имитировать оплату</button>
     </div>
 
-    <!-- Контейнер для оплаты -->
     <div id="payment-container">
         <div id="payment-form-wrapper">
             <button id="close-payment-btn">×</button>
-            <div id="payment-form" style="width: 100%; height: 100%;"></div>
+            <form id="payment-form-tinkoff"></form>
         </div>
     </div>
-    
-    <script src="https://securepay.tinkoff.ru/html/payform/js/payform-widget.js"></script>
 
     <script>
         // --- НАСТРОЙКИ ---
@@ -152,19 +76,13 @@
             tg.expand();
             document.getElementById('debug-controls').style.display = 'none';
         } else {
-            console.warn("Режим отладки в браузере. Кнопки Telegram будут имитированы.");
+            console.warn("Режим отладки в браузере.");
             document.getElementById('telegram-ui').style.display = 'none';
             tg = {
-                MainButton: {
-                    show: () => console.log("Debug: MainButton.show()"),
-                    hide: () => console.log("Debug: MainButton.hide()"),
-                    setText: (text) => console.log(`Debug: MainButton.setText("${text}")`),
-                    onClick: (callback) => { window.tgMainButtonCallback = callback; },
-                    showProgress: () => console.log("Debug: MainButton.showProgress()"),
-                    hideProgress: () => console.log("Debug: MainButton.hideProgress()")
-                },
-                showAlert: (message) => alert(message),
-                sendData: (data) => console.log("Debug: tg.sendData", JSON.parse(data))
+                MainButton: { show: () => {}, hide: () => {}, setText: () => {}, onClick: (cb) => { window.tgMainButtonCallback = cb; }, showProgress: () => {}, hideProgress: () => {} },
+                showAlert: (msg) => alert(msg),
+                sendData: (data) => console.log("Debug: tg.sendData", JSON.parse(data)),
+                close: () => console.log("Debug: tg.close()")
             };
         }
 
@@ -183,69 +101,27 @@
 
         async function loadDates() {
             const { data, error } = await supabaseClient.from('schedule').select('*').gte('date', new Date().toISOString().split('T')[0]).order('date', { ascending: true });
-            if (error) {
-                console.error('Ошибка загрузки дат:', error);
-                if (isTelegram) document.getElementById('dates-container').innerText = 'Ошибка загрузки дат.';
-                return;
-            }
+            if (error) { console.error('Ошибка загрузки дат:', error); if (isTelegram) document.getElementById('dates-container').innerText = 'Ошибка.'; return; }
             window.availableFilms = data;
-            console.log("Доступные фильмы/даты загружены:", window.availableFilms);
-            
+            console.log("Фильмы загружены:", data);
             if (isTelegram) {
                  const uniqueDates = [...new Set(data.map(item => item.date))];
                  const container = document.getElementById('dates-container');
                  container.innerHTML = '';
-                 if (uniqueDates.length === 0) { container.innerText = 'Нет доступных сеансов.'; return; }
+                 if (uniqueDates.length === 0) { container.innerText = 'Нет сеансов.'; return; }
                  uniqueDates.forEach(date => {
                      const el = document.createElement('div');
                      el.className = 'list-item';
-                     el.innerText = new Date(date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric'});
+                     el.innerText = new Date(date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long'});
                      el.onclick = () => { booking.date = date; loadFilms(date); };
                      container.appendChild(el);
                  });
             }
         }
-
-        function loadFilms(date) {
-            const filmsOnDate = window.availableFilms.filter(f => f.date === date);
-            const container = document.getElementById('films-container');
-            container.innerHTML = '';
-            filmsOnDate.forEach(film => {
-                const el = document.createElement('div');
-                el.className = 'list-item';
-                el.innerHTML = `<h3>${film.film_name}</h3><p>Начало в ${film.film_time}</p>`;
-                el.onclick = () => {
-                    Object.assign(booking, { film_name: film.film_name, film_time: film.film_time, film_data: film });
-                    loadSeats(film);
-                };
-                container.appendChild(el);
-            });
-            document.getElementById('film-screen-title').innerText = `🎬 Выберите фильм на ${new Date(date + 'T00:00:00').toLocaleDateString('ru-RU')}`;
-            showScreen('film-screen');
-        }
         
-        function loadSeats(film) {
-            document.getElementById('seat-screen-title').innerText = film.film_name;
-            const container = document.getElementById('seats-container');
-            container.innerHTML = '';
-            const stdSeatsEl = document.createElement('div');
-            stdSeatsEl.className = 'list-item';
-            stdSeatsEl.innerHTML = `<h3>Обычный пуф</h3><p>Доступно: ${film.std_total}</p>`;
-            stdSeatsEl.onclick = () => { booking.seat_type = 'обычный'; showUserDataScreen(); };
-            const bigSeatsEl = document.createElement('div');
-            bigSeatsEl.className = 'list-item';
-            bigSeatsEl.innerHTML = `<h3>Большой пуф</h3><p>Доступно: ${film.big_total}</p>`;
-            bigSeatsEl.onclick = () => { booking.seat_type = 'большой'; showUserDataScreen(); };
-            if (film.std_total > 0) container.appendChild(stdSeatsEl);
-            if (film.big_total > 0) container.appendChild(bigSeatsEl);
-            showScreen('seat-screen');
-        }
-
-        function showUserDataScreen() {
-            showScreen('user-data-screen');
-            tg.MainButton.setText('Подтвердить и оплатить');
-            tg.MainButton.show();
-        }
+        function loadFilms(date) { /* ... */ } // Остальные функции-экраны остаются такими же
+        function loadSeats(film) { /* ... */ }
+        function showUserDataScreen() { /* ... */ }
 
         async function mainButtonClickHandler() {
             if (isTelegram) {
@@ -253,46 +129,40 @@
                 booking.name = document.getElementById('name-input').value;
                 booking.phone = document.getElementById('phone-input').value;
             }
-
             booking.booking_code = String(Math.floor(10000 + Math.random() * 90000));
-            booking.status = 'pending';
-
-            if (!booking.name) { tg.showAlert('Пожалуйста, введите ваше имя.'); return; }
-            if (!booking.quantity || booking.quantity < 1) { tg.showAlert('Укажите корректное количество мест.'); return; }
-            
+            if (!booking.name || !booking.quantity) { tg.showAlert('Заполните все поля'); return; }
             tg.MainButton.showProgress();
 
-            const { error } = await supabaseClient.from('bookings').insert([{ name: booking.name, phone: booking.phone, date: booking.date, film_name: booking.film_name, quantity: booking.quantity, seat_type: booking.seat_type, booking_code: booking.booking_code, status: 'pending' }]);
+            const { error } = await supabaseClient.from('bookings').insert([{...booking}]); // Упрощенная запись
             if (error) {
-                tg.showAlert('Не удалось создать бронь. Ошибка: ' + error.message);
+                tg.showAlert('Ошибка создания брони: ' + error.message);
                 tg.MainButton.hideProgress();
                 return;
             }
             initTinkoffPayment();
         }
-        
+
         function initTinkoffPayment() {
             const price = booking.seat_type === 'обычный' ? 500 : 600;
             const amount = price * booking.quantity;
             
             document.getElementById('payment-container').style.display = 'flex';
             tg.MainButton.hideProgress();
-            
-            window.TinkoffWidget.init({
-                terminalKey: TINKOFF_TERMINAL_KEY,
-                amount: amount * 100,
-                orderNumber: booking.booking_code,
-                description: `Бронь №${booking.booking_code}: ${booking.film_name}`,
-                email: booking.email || "", 
-                phone: booking.phone || "",
-                customerKey: (tg.initDataUnsafe && tg.initDataUnsafe.user) ? String(tg.initDataUnsafe.user.id) : booking.name,
-                language: 'ru',
-            }).embed(document.getElementById('payment-form'));
 
-            window.TinkoffWidget.on('success', (res) => {
-                 handlePaymentSuccess(res.orderNumber, res.paymentId, amount);
-            });
-            window.TinkoffWidget.on('fail', (res) => {
+            // ПРАВИЛЬНЫЙ ВЫЗОВ WIDGET'А
+            TinkoffWidget.open({
+                shopId: TINKOFF_TERMINAL_KEY, // <-- Имя параметра shopId, а не terminalKey
+                orderNumber: booking.booking_code,
+                amount: amount, // <-- Сумма в рублях, а не копейках
+                description: `Бронь №${booking.booking_code}: ${booking.film_name}`,
+                email: "",
+                phone: booking.phone || "",
+                customerKey: (isTelegram && tg.initDataUnsafe?.user) ? String(tg.initDataUnsafe.user.id) : booking.name
+            })
+            .on("success", async (res) => {
+                 await handlePaymentSuccess(res.orderNumber, res.paymentId, amount);
+            })
+            .on("fail", (res) => {
                  tg.showAlert(`Ошибка оплаты: ${res.message || 'Попробуйте снова.'}`);
                  document.getElementById('payment-container').style.display = 'none';
             });
@@ -300,19 +170,12 @@
 
         async function handlePaymentSuccess(orderId, paymentId, amount) {
             await supabaseClient.from('bookings').update({ status: 'active' }).eq('booking_code', orderId);
-            
             if (isTelegram) {
-                const dataToSend = JSON.stringify({ 
-                    status: 'success', 
-                    order_id: orderId, 
-                    payment_id: paymentId,
-                    amount: amount, 
-                    description: `Бронь №${orderId}: ${booking.film_name}` 
-                });
+                const dataToSend = JSON.stringify({ status: 'success', order_id: orderId, payment_id: paymentId, amount: amount, description: `Бронь №${orderId}: ${booking.film_name}` });
                 tg.sendData(dataToSend);
-                // Можно добавить tg.close() здесь, если нужно
+                tg.close();
             } else {
-                alert("Оплата прошла успешно! " + orderId);
+                alert("Оплата УСПЕШНО прошла! Код: " + orderId);
                 document.getElementById('payment-container').style.display = 'none';
             }
         }
@@ -320,24 +183,10 @@
         if (isTelegram) {
             tg.onEvent('mainButtonClicked', mainButtonClickHandler);
         } else {
-            document.getElementById('debug-select-film-btn').onclick = () => {
-                if (!window.availableFilms || window.availableFilms.length === 0) { alert("Фильмы еще не загрузились."); return; }
-                const firstFilm = window.availableFilms[0];
-                Object.assign(booking, { date: firstFilm.date, film_name: firstFilm.film_name, film_time: firstFilm.film_time, film_data: firstFilm });
-                console.log("Выбран фильм:", booking);
-                alert(`Выбран фильм: ${booking.film_name}`);
-            };
-            document.getElementById('debug-select-seat-btn').onclick = () => {
-                if (!booking.film_name) { alert("Сначала выберите фильм"); return; }
-                Object.assign(booking, { seat_type: 'обычный', quantity: 2 });
-                console.log("Выбраны места:", booking);
-                alert(`Выбраны места: 2 обычных пуфа`);
-            };
-            document.getElementById('debug-confirm-btn').onclick = () => {
-                if (!booking.seat_type) { alert("Сначала выберите места"); return; }
-                Object.assign(booking, { name: "Тест Браузер", phone: "88005553535" });
-                mainButtonClickHandler();
-            };
+            // Кнопки отладки
+            document.getElementById('debug-select-film-btn').onclick = () => { if (!window.availableFilms.length) return alert("Фильмы не загружены"); const film = window.availableFilms[0]; Object.assign(booking, { date: film.date, film_name: film.film_name, film_time: film.film_time }); alert(`Выбран фильм: ${film.film_name}`); };
+            document.getElementById('debug-select-seat-btn').onclick = () => { if (!booking.film_name) return alert("Сначала фильм"); Object.assign(booking, { seat_type: 'обычный', quantity: 2 }); alert(`Выбраны 2 обычных пуфа`); };
+            document.getElementById('debug-confirm-btn').onclick = () => { if (!booking.seat_type) return alert("Сначала места"); Object.assign(booking, { name: "Тест", phone: "123" }); mainButtonClickHandler(); };
         }
 
         document.getElementById('close-payment-btn').onclick = () => { document.getElementById('payment-container').style.display = 'none'; };
@@ -346,6 +195,11 @@
              if (isTelegram) showScreen('date-screen');
              loadDates();
         };
+
+        // Функции, которые не менялись, для полноты кода
+        function loadFilms(date) { const filmsOnDate = window.availableFilms.filter(f => f.date === date); const container = document.getElementById('films-container'); container.innerHTML = ''; filmsOnDate.forEach(film => { const el = document.createElement('div'); el.className = 'list-item'; el.innerHTML = `<h3>${film.film_name}</h3><p>Начало в ${film.film_time}</p>`; el.onclick = () => { Object.assign(booking, { film_name: film.film_name, film_time: film.film_time, film_data: film }); loadSeats(film); }; container.appendChild(el); }); document.getElementById('film-screen-title').innerText = `🎬 Выберите фильм на ${new Date(date + 'T00:00:00').toLocaleDateString('ru-RU')}`; showScreen('film-screen'); }
+        function loadSeats(film) { document.getElementById('seat-screen-title').innerText = film.film_name; const container = document.getElementById('seats-container'); container.innerHTML = ''; const stdSeatsEl = document.createElement('div'); stdSeatsEl.className = 'list-item'; stdSeatsEl.innerHTML = `<h3>Обычный пуф</h3><p>Доступно: ${film.std_total}</p>`; stdSeatsEl.onclick = () => { booking.seat_type = 'обычный'; showUserDataScreen(); }; const bigSeatsEl = document.createElement('div'); bigSeatsEl.className = 'list-item'; bigSeatsEl.innerHTML = `<h3>Большой пуф</h3><p>Доступно: ${film.big_total}</p>`; bigSeatsEl.onclick = () => { booking.seat_type = 'большой'; showUserDataScreen(); }; if (film.std_total > 0) container.appendChild(stdSeatsEl); if (film.big_total > 0) container.appendChild(bigSeatsEl); showScreen('seat-screen'); }
+        function showUserDataScreen() { showScreen('user-data-screen'); tg.MainButton.setText('Подтвердить и оплатить'); tg.MainButton.show(); }
     </script>
 </body>
 </html>
